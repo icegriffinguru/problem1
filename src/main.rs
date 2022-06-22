@@ -1,6 +1,6 @@
 use exitfailure::ExitFailure;
 use reqwest::StatusCode;
-use std::{fs::File, io::Write, thread};
+use std::{fs::{File, OpenOptions}, io::{Write, Read}, thread, path::Path};
 use futures::executor::block_on;
 
 async fn get(entry: i32) -> Result<String, ExitFailure> {
@@ -22,8 +22,54 @@ async fn get(entry: i32) -> Result<String, ExitFailure> {
     }
 }
 
+fn count_lines(data: &String) -> Result<i32, ExitFailure> {
+    let mut count = 0;
+    for c in data.chars() {
+        if c == '\n' {
+            count += 1;
+        }
+    }
+
+    Ok(count)
+}
+
+async fn read_and_append(file: &mut File, entry: i32) -> Result<(), ExitFailure> {
+    Ok(())
+}
+
 async fn process_in_thread(thread_id: i32) -> Result<(), ExitFailure> {
-    println!("thread {}", thread_id);
+    // println!("thread {}", thread_id);
+
+    let file_path = format!("output-{}.txt", thread_id + 1);
+
+    let mut data = String::new();
+
+    let mut file = if Path::new(&file_path).exists() {
+        OpenOptions::new()
+        .read(true)
+        .write(true)
+        .append(true)
+        .open(&file_path)
+        .unwrap()
+    } else {
+        OpenOptions::new()
+        .create_new(true)
+        .read(true)
+        .write(true)
+        .append(true)
+        .open(&file_path)
+        .unwrap()
+    };
+
+    let _ = file.read_to_string(&mut data).unwrap_or_default();
+
+    let number_of_lines = count_lines(&data).unwrap();
+    println!("Thread: {} === Number Of Lines: {}", thread_id, number_of_lines);
+
+    for i in number_of_lines..100 {
+        let entry = (thread_id - 1) * 100 + i;
+        read_and_append(&mut file, entry).await?;
+    }
 
     Ok(())
 }
@@ -32,7 +78,7 @@ async fn process_in_thread(thread_id: i32) -> Result<(), ExitFailure> {
 async fn main() -> Result<(), ExitFailure> {
     let mut threads = Vec::new();
 
-    for thread_id in 0..5 {
+    for thread_id in 1..=5 {
         let thread = thread::spawn(move || block_on(process_in_thread(thread_id)));
         threads.push(thread);
     }
