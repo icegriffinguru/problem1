@@ -1,6 +1,7 @@
 use exitfailure::ExitFailure;
 use reqwest::StatusCode;
 use std::{fs::{OpenOptions}, io::{Write, Read}, path::Path};
+use std::{thread, time};
 
 async fn get(entry: i32) -> Result<String, ExitFailure> {
     let url = format!(
@@ -9,8 +10,11 @@ async fn get(entry: i32) -> Result<String, ExitFailure> {
     );
 
     loop {
-        let resp = reqwest::get(url.clone())
-        .await?;
+        // let resp = reqwest::get(url.clone()).await?;
+        let client = reqwest::Client::builder()
+            .timeout(time::Duration::from_secs(1000))
+            .build()?;
+        let resp = client.get(&url).send().await?;
 
         // println!("status: {}", temp.status());
 
@@ -18,6 +22,10 @@ async fn get(entry: i32) -> Result<String, ExitFailure> {
             let text = resp.text().await?;
             return Ok(text);
         }
+
+        // sleep for avoiding API request limit
+        let sleep_duration = time::Duration::from_millis(10);
+        thread::sleep(sleep_duration);
     }
 }
 
