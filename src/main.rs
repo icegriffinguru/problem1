@@ -33,13 +33,13 @@ fn count_lines(data: &String) -> Result<i32, ExitFailure> {
     Ok(count)
 }
 
-async fn read_and_append(file: &mut File, entry: i32) -> Result<(), ExitFailure> {
-    let res = get(entry).await?;
-    // let _ = file.write_all(res.as_bytes());
-    // let _ = file.write_all(b"\n");
+// async fn read_and_append(file: &mut File, entry: i32) -> Result<(), ExitFailure> {
+//     let res = get(entry).await?;
+//     // let _ = file.write_all(res.as_bytes());
+//     // let _ = file.write_all(b"\n");
 
-    Ok(())
-}
+//     Ok(())
+// }
 
 async fn process_in_thread(thread_id: i32) -> Result<(), ExitFailure> {
     // println!("thread {}", thread_id);
@@ -72,7 +72,11 @@ async fn process_in_thread(thread_id: i32) -> Result<(), ExitFailure> {
 
     for i in number_of_lines..100 {
         let entry = (thread_id - 1) * 100 + i;
-        read_and_append(&mut file, entry).await?;
+        // read_and_append(&mut file, entry).await?;
+
+        let res = get(entry).await?;
+        let _ = file.write_all(res.as_bytes());
+        let _ = file.write_all(b"\n");
     }
 
     Ok(())
@@ -83,6 +87,7 @@ async fn main() -> Result<(), ExitFailure> {
     let mut threads = Vec::new();
 
     for thread_id in 1..=5 {
+        
         let thread = thread::spawn(move || block_on(process_in_thread(thread_id)));
         threads.push(thread);
     }
