@@ -5,7 +5,7 @@ use futures::executor::block_on;
 
 async fn get(entry: i32) -> Result<String, ExitFailure> {
     let url = format!(
-        "https://m6alkgx1qj.execute-api.us-west-2.amazonaws.com/prod/v1/{}",
+        "https://m6alkgx1qj.execute-api.us-west-2.amazonaws.com/prod/v2/{}",
         entry
     );
 
@@ -34,6 +34,10 @@ fn count_lines(data: &String) -> Result<i32, ExitFailure> {
 }
 
 async fn read_and_append(file: &mut File, entry: i32) -> Result<(), ExitFailure> {
+    let res = get(entry).await?;
+    // let _ = file.write_all(res.as_bytes());
+    // let _ = file.write_all(b"\n");
+
     Ok(())
 }
 
