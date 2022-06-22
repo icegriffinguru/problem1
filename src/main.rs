@@ -1,7 +1,6 @@
 use exitfailure::ExitFailure;
 use reqwest::StatusCode;
-use std::{fs::{File, OpenOptions}, io::{Write, Read}, thread, path::Path};
-use futures::executor::block_on;
+use std::{fs::{OpenOptions}, io::{Write, Read}, path::Path};
 
 async fn get(entry: i32) -> Result<String, ExitFailure> {
     let url = format!(
@@ -33,18 +32,10 @@ fn count_lines(data: &String) -> Result<i32, ExitFailure> {
     Ok(count)
 }
 
-// async fn read_and_append(file: &mut File, entry: i32) -> Result<(), ExitFailure> {
-//     let res = get(entry).await?;
-//     // let _ = file.write_all(res.as_bytes());
-//     // let _ = file.write_all(b"\n");
-
-//     Ok(())
-// }
-
 async fn process_in_thread(thread_id: i32) -> Result<(), ExitFailure> {
     // println!("thread {}", thread_id);
 
-    let file_path = format!("output-{}.txt", thread_id + 1);
+    let file_path = format!("output-{}.txt", thread_id);
 
     let mut data = String::new();
 
@@ -68,7 +59,7 @@ async fn process_in_thread(thread_id: i32) -> Result<(), ExitFailure> {
     let _ = file.read_to_string(&mut data).unwrap_or_default();
 
     let number_of_lines = count_lines(&data).unwrap();
-    println!("Thread: {} === Number Of Lines: {}", thread_id, number_of_lines);
+    // println!("Thread: {} === Number Of Lines: {}", thread_id, number_of_lines);
 
     for i in number_of_lines..100 {
         let entry = (thread_id - 1) * 100 + i;
@@ -88,12 +79,15 @@ async fn main() -> Result<(), ExitFailure> {
 
     for thread_id in 1..=5 {
         
-        let thread = thread::spawn(move || block_on(process_in_thread(thread_id)));
+        let thread = tokio::spawn(async move {
+            // Process each socket concurrently.
+            let _ = process_in_thread(thread_id).await;
+        });
         threads.push(thread);
     }
     
     for thread in threads {
-        let _ = thread.join().unwrap();
+        let _ = thread.await.unwrap();
     }
 
     Ok(())
