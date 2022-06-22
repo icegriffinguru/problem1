@@ -1,5 +1,7 @@
 use exitfailure::ExitFailure;
-use std::{fs::File, io::Write};
+use reqwest::StatusCode;
+use std::{fs::File, io::Write, thread};
+use futures::executor::block_on;
 
 async fn get(entry: i32) -> Result<String, ExitFailure> {
     let url = format!(
@@ -7,41 +9,37 @@ async fn get(entry: i32) -> Result<String, ExitFailure> {
         entry
     );
 
-    let mut resp;
     loop {
-        resp = reqwest::get(url.clone())
-        .await?
-        .text()
+        let resp = reqwest::get(url.clone())
         .await?;
 
-        if resp.len() > 0 {
-            break;
+        // println!("status: {}", temp.status());
+
+        if resp.status() == StatusCode::OK {
+            let text = resp.text().await?;
+            return Ok(text);
         }
     }
+}
 
-    Ok(resp)
+async fn process_in_thread(thread_id: i32) -> Result<(), ExitFailure> {
+    println!("thread {}", thread_id);
+
+    Ok(())
 }
 
 #[tokio::main]
 async fn main() -> Result<(), ExitFailure> {
-    for i in 0..5 {
-        let file_name = format!("output-{}.txt", i + 1);
-        let mut file = File::create(file_name)?;
+    let mut threads = Vec::new();
 
-        let mut output = String::new();
-        for j in 0..100 {
-            let entry = i * 100 + j + 1;
-            let res = get(entry).await?;
-            // println!("{:#?}", res);
-            output.push_str(&res);
-            output.push('\n');
-
-            println!("Read line {}", entry);
-        }
-        // println!("{:#?}", output);
-        let _ = file.write(output.as_bytes());
+    for thread_id in 0..5 {
+        let thread = thread::spawn(move || block_on(process_in_thread(thread_id)));
+        threads.push(thread);
     }
     
+    for thread in threads {
+        let _ = thread.join().unwrap();
+    }
 
     Ok(())
 }
